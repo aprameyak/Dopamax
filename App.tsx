@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { databaseService, Task as DatabaseTask, TaskWithId } from './database';
 
 interface Task {
   id: string;
@@ -20,54 +21,164 @@ interface Task {
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskScore, setNewTaskScore] = useState('5');
 
-  const addTask = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDatabaseReady, setIsDatabaseReady] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
+  // Initialize database and load tasks
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        await databaseService.initDatabase();
+        setIsDatabaseReady(true);
+        
+        // Load existing tasks from database
+        const dbTasks = await databaseService.getTasks();
+        const convertedTasks: Task[] = dbTasks
+          .filter(dbTask => dbTask.id !== undefined) // Only include tasks with valid IDs
+          .map(dbTask => ({
+            id: dbTask.id!.toString(), // Safe to use ! since we filtered
+            title: dbTask.title,
+            dopamineScore: dbTask.score,
+            completed: dbTask.completed,
+          }));
+        
+        setTasks(convertedTasks);
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        Alert.alert('Error', 'Failed to initialize app. Using local storage.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  const addTask = async () => {
     if (newTaskTitle.trim() === '') {
       Alert.alert('Error', 'Please enter a task title');
       return;
     }
 
-    const score = parseInt(newTaskScore) || 5;
-    if (score < 1 || score > 10) {
-      Alert.alert('Error', 'Dopamine score must be between 1-10');
-      return;
-    }
-
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: newTaskTitle.trim(),
-      dopamineScore: score,
-      completed: false,
-    };
-
-    setTasks([...tasks, newTask]);
-    setNewTaskTitle('');
-    setNewTaskScore('5');
+    // Save to database if ready
+    if (isDatabaseReady) {
+      try {
+        const dbTask: Omit<DatabaseTask, 'id'> = {
+          title: newTaskTitle.trim(),
+          score: 1, // All tasks count as 1
+          completed: false,
+          createdAt: new Date().toISOString(),
+        };
+        const savedTask = await databaseService.addTask(dbTask);
+        
+        // Add to local state with the correct database ID
+        const newTask: Task = {
+          id: savedTask.id.toString(),
+          title: savedTask.title,
+          dopamineScore: savedTask.score,
+          completed: savedTask.completed,
+        };
+        setTasks([...tasks, newTask]);
+      } catch (error) {
+        console.error('Error saving task to database:', error);
+        Alert.alert('Warning', 'Task saved locally but failed to save to database.');
+        
+                 // Fallback: add to local state with temporary ID
+         const newTask: Task = {
+           id: Date.now().toString(),
+           title: newTaskTitle.trim(),
+           dopamineScore: 1,
+           completed: false,
+         };
+        setTasks([...tasks, newTask]);
+      }
+    } else {
+             // Database not ready, add to local state with temporary ID
+       const newTask: Task = {
+         id: Date.now().toString(),
+         title: newTaskTitle.trim(),
+                    dopamineScore: 1,
+         completed: false,
+       };
+       setTasks([...tasks, newTask]);
+     }
+     
+     setNewTaskTitle('');
   };
 
-  const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task =>
+  const toggleTask = async (taskId: string) => {
+    const updatedTasks = tasks.map(task =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    );
+    
+    // Update local state immediately for responsive UI
+    setTasks(updatedTasks);
+
+    // Update database if ready
+    if (isDatabaseReady) {
+      try {
+        const task = updatedTasks.find(t => t.id === taskId);
+        if (task) {
+          const dbId = parseInt(taskId);
+          if (!isNaN(dbId)) {
+            await databaseService.updateTask(dbId, {
+              completed: task.completed,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error updating task in database:', error);
+        Alert.alert('Warning', 'Task updated locally but failed to update in database.');
+      }
+    }
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
+    // Remove from local state immediately for responsive UI
     setTasks(tasks.filter(task => task.id !== taskId));
+
+    // Delete from database if ready
+    if (isDatabaseReady) {
+      try {
+        const dbId = parseInt(taskId);
+        if (!isNaN(dbId)) {
+          await databaseService.deleteTask(dbId);
+        }
+      } catch (error) {
+        console.error('Error deleting task from database:', error);
+        Alert.alert('Warning', 'Task deleted locally but failed to delete from database.');
+      }
+    }
   };
 
   const completedTasks = tasks.filter(task => task.completed).length;
   const totalTasks = tasks.length;
   const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
-  const totalDopamine = tasks
-    .filter(task => task.completed)
-    .reduce((sum, task) => sum + task.dopamineScore, 0);
+  const totalDopamine = tasks.filter(task => task.completed).length;
+
+  // Filter tasks based on completion status
+  const visibleTasks = showCompletedTasks 
+    ? tasks 
+    : tasks.filter(task => !task.completed);
 
   const getProgressColor = () => {
     if (progress >= 0.8) return '#8B5CF6';
     if (progress >= 0.5) return '#A855F7';
     return '#F1F3F4';
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading Dopamax...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -102,7 +213,7 @@ export default function App() {
         
         <View style={styles.dopamineCounter}>
           <Text style={styles.dopamineText}>{totalDopamine}</Text>
-          <Text style={styles.dopamineLabel}>dopamine points earned</Text>
+          <Text style={styles.dopamineLabel}>tasks completed</Text>
         </View>
       </View>
 
@@ -110,43 +221,14 @@ export default function App() {
       <View style={styles.addTaskSection}>
         <Text style={styles.sectionTitle}>Add New Task</Text>
         
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.taskInput}
-            placeholder="What do you want to accomplish?"
-            value={newTaskTitle}
-            onChangeText={setNewTaskTitle}
-            placeholderTextColor="#999"
-          />
-          
-          <View style={styles.scoreContainer}>
-            <Text style={styles.scoreLabel}>Dopamine Score:</Text>
-            <View style={styles.scoreButtons}>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                <TouchableOpacity
-                  key={score}
-                  style={[
-                    styles.scoreButton,
-                    {
-                      backgroundColor: parseInt(newTaskScore) === score ? '#8B5CF6' : '#F1F3F4',
-                    },
-                  ]}
-                  onPress={() => setNewTaskScore(score.toString())}
-                >
-                  <Text
-                    style={[
-                      styles.scoreButtonText,
-                      {
-                        color: parseInt(newTaskScore) === score ? 'white' : '#666',
-                      },
-                    ]}
-                  >
-                    {score}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+                  <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.taskInput}
+              placeholder="What do you want to accomplish?"
+              value={newTaskTitle}
+              onChangeText={setNewTaskTitle}
+              placeholderTextColor="#999"
+            />
           
           <TouchableOpacity style={styles.addButton} onPress={addTask}>
             <Text style={styles.addButtonText}>Add Task</Text>
@@ -156,16 +238,35 @@ export default function App() {
 
       {/* Tasks List */}
       <ScrollView style={styles.tasksContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Your Tasks</Text>
+        <View style={styles.tasksHeader}>
+          <Text style={styles.sectionTitle}>Your Tasks</Text>
+          {completedTasks > 0 && (
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={() => setShowCompletedTasks(!showCompletedTasks)}
+            >
+              <Text style={styles.toggleButtonText}>
+                {showCompletedTasks ? 'Hide' : 'Show'} Completed ({completedTasks})
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         
-        {tasks.length === 0 ? (
+        {visibleTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🎯</Text>
-            <Text style={styles.emptyText}>No tasks yet!</Text>
-            <Text style={styles.emptySubtext}>Add your first dopamine-boosting task above</Text>
+            <Text style={styles.emptyText}>
+              {tasks.length === 0 ? 'No tasks yet!' : 'All tasks completed!'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {tasks.length === 0 
+                ? 'Add your first dopamine-boosting task above'
+                : 'Great job! Add more tasks to keep the momentum going'
+              }
+            </Text>
           </View>
         ) : (
-          tasks.map((task) => (
+          visibleTasks.map((task) => (
             <View key={task.id} style={styles.taskItem}>
               <TouchableOpacity
                 style={styles.taskContent}
@@ -186,11 +287,6 @@ export default function App() {
                   >
                     {task.title}
                   </Text>
-                  <View style={styles.taskScore}>
-                    <Text style={styles.scoreText}>
-                      {task.dopamineScore}
-                    </Text>
-                  </View>
                 </View>
               </TouchableOpacity>
               
@@ -212,6 +308,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: 'white',
+    fontWeight: '600',
   },
   header: {
     backgroundColor: '#8B5CF6',
@@ -309,30 +416,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#FAFAFA',
   },
-  scoreContainer: {
-    gap: 8,
-  },
-  scoreLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  scoreButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  scoreButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  scoreButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
   addButton: {
     backgroundColor: '#8B5CF6',
     paddingVertical: 12,
@@ -347,6 +431,23 @@ const styles = StyleSheet.create({
   tasksContainer: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  tasksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  toggleButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  toggleButtonText: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
@@ -404,18 +505,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#999',
   },
-  taskScore: {
-    alignSelf: 'flex-start',
-  },
-  scoreText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8B5CF6',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
+
   deleteButton: {
     padding: 16,
   },
