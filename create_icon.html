@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dopamax Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .icon-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .icon {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+            text-align: center;
+        }
+        .icon canvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .download-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #8B5CF6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .download-btn:hover {
+            background: #7C3AED;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dopamax App Icon Generator</h1>
+    <div class="icon-container">
+        <div class="icon">
+            <h3>1024x1024 (Main Icon)</h3>
+            <canvas id="icon1024" width="1024" height="1024"></canvas>
+            <br>
+            <button class="download-btn" onclick="downloadIcon('icon1024', 'icon.png')">Download icon.png</button>
+        </div>
+        <div class="icon">
+            <h3>512x512 (Adaptive Icon)</h3>
+            <canvas id="icon512" width="512" height="512"></canvas>
+            <br>
+            <button class="download-btn" onclick="downloadIcon('icon512', 'adaptive-icon.png')">Download adaptive-icon.png</button>
+        </div>
+        <div class="icon">
+            <h3>192x192 (Splash)</h3>
+            <canvas id="icon192" width="192" height="192"></canvas>
+            <br>
+            <button class="download-btn" onclick="downloadIcon('icon192', 'splash-icon.png')">Download splash-icon.png</button>
+        </div>
+        <div class="icon">
+            <h3>32x32 (Favicon)</h3>
+            <canvas id="icon32" width="32" height="32"></canvas>
+            <br>
+            <button class="download-btn" onclick="downloadIcon('icon32', 'favicon.png')">Download favicon.png</button>
+        </div>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#8B5CF6');
+            gradient.addColorStop(1, '#A855F7');
+            
+            // Draw background
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add rounded corners
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.2);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Draw dopamine molecule symbol
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const moleculeSize = size * 0.4;
+            
+            // Draw central circle (carbon atom)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, moleculeSize * 0.15, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw connecting lines (bonds)
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = size * 0.02;
+            ctx.lineCap = 'round';
+            
+            // Draw bonds
+            const bondLength = moleculeSize * 0.3;
+            const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
+            
+            angles.forEach(angle => {
+                const x1 = centerX + Math.cos(angle) * moleculeSize * 0.15;
+                const y1 = centerY + Math.sin(angle) * moleculeSize * 0.15;
+                const x2 = centerX + Math.cos(angle) * bondLength;
+                const y2 = centerY + Math.sin(angle) * bondLength;
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                
+                // Draw small circles at bond ends (hydrogen atoms)
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x2, y2, moleculeSize * 0.08, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            
+            // Add "D" letter overlay for Dopamax
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = `bold ${size * 0.25}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('D', centerX, centerY + size * 0.35);
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Generate all icons
+        drawIcon('icon1024', 1024);
+        drawIcon('icon512', 512);
+        drawIcon('icon192', 192);
+        drawIcon('icon32', 32);
+    </script>
+</body>
+</html> 
