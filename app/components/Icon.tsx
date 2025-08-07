@@ -11,7 +11,7 @@ interface IconProps {
 export default function Icon({ src, alt, width = 64, height = 64, className = '' }: IconProps) {
   return (
     <Image
-      src={src}
+      src={`/assets/${src}`}
       alt={alt}
       width={width}
       height={height}

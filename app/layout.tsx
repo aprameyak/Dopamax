@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Dopamax',
   description: 'Dopamax productivity app - Turn tasks into dopamine hits',
+  icons: {
+    icon: '/assets/favicon.png',
+  },
 }
 
 export default function RootLayout({

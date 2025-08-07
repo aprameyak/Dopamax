@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Icon from './components/Icon'
 
 export default function Home() {
   return (
@@ -17,13 +18,21 @@ export default function Home() {
         textAlign: 'center',
         maxWidth: '600px'
       }}>
-        <h1 style={{
-          fontSize: '3rem',
-          marginBottom: '1rem',
-          fontWeight: 'bold'
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1rem',
+          marginBottom: '1rem'
         }}>
-          Dopamax
-        </h1>
+          <Icon src="icon.png" alt="Dopamax Icon" width={80} height={80} />
+          <h1 style={{
+            fontSize: '3rem',
+            fontWeight: 'bold'
+          }}>
+            Dopamax
+          </h1>
+        </div>
         
         <p style={{
           fontSize: '1.2rem',
