@@ -22,7 +22,7 @@ export default function Home() {
           marginBottom: '1rem',
           fontWeight: 'bold'
         }}>
-          Dopamax Admin
+          Dopamax
         </h1>
         
         <p style={{
@@ -30,7 +30,7 @@ export default function Home() {
           marginBottom: '3rem',
           opacity: 0.9
         }}>
-          Welcome to the admin portal for Dopamax - the productivity app that turns tasks into dopamine hits.
+          Welcome to Dopamax - the productivity app that turns tasks into dopamine hits.
         </p>
         
         <div style={{

@@ -1,12 +1,13 @@
-# Dopamax Admin
+# Dopamax
 
-A minimal Next.js admin portal for the Dopamax productivity app.
+A minimal Next.js portal for the Dopamax productivity app.
 
 ## Features
 
 - **Home Page (`/`)**: Welcome page with links to support and privacy pages
 - **Support Page (`/support`)**: Contact information with clickable email link
 - **Privacy Policy Page (`/privacy`)**: Comprehensive privacy policy for the Dopamax app
+- **Analytics**: Vercel Analytics integration for page view tracking
 
 ## Getting Started
 
@@ -55,6 +56,8 @@ npm i -g vercel
 ```bash
 vercel
 ```
+
+3. Analytics will automatically start collecting page views once deployed.
 
 ### Other Platforms
 
