@@ -30,9 +30,7 @@ class DatabaseService {
         );
       `);
       
-      console.log('Database initialized successfully');
     } catch (error) {
-      console.error('Error initializing database:', error);
     }
   }
 
@@ -66,7 +64,6 @@ class DatabaseService {
         completed: Boolean(task.completed)
       }));
     } catch (error) {
-      console.error('Error getting tasks from database:', error);
       return [];
     }
   }
@@ -89,7 +86,6 @@ class DatabaseService {
         [...values, id]
       );
     } catch (error) {
-      console.error('Error updating task in database:', error);
       throw error;
     }
   }
@@ -100,7 +96,6 @@ class DatabaseService {
     try {
       await this.db.runAsync('DELETE FROM tasks WHERE id = ?', [id]);
     } catch (error) {
-      console.error('Error deleting task from database:', error);
       throw error;
     }
   }

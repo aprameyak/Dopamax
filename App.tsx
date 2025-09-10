@@ -46,7 +46,6 @@ export default function App() {
         
         setTasks(convertedTasks);
       } catch (error) {
-        console.error('Error initializing app:', error);
         Alert.alert('Error', 'Failed to initialize app. Using local storage.');
       } finally {
         setIsLoading(false);
@@ -82,7 +81,6 @@ export default function App() {
         };
         setTasks([...tasks, newTask]);
       } catch (error) {
-        console.error('Error saving task to database:', error);
         Alert.alert('Warning', 'Task saved locally but failed to save to database.');
         
                  // Fallback: add to local state with temporary ID
@@ -129,7 +127,6 @@ export default function App() {
           }
         }
       } catch (error) {
-        console.error('Error updating task in database:', error);
         Alert.alert('Warning', 'Task updated locally but failed to update in database.');
       }
     }
@@ -147,7 +144,6 @@ export default function App() {
           await databaseService.deleteTask(dbId);
         }
       } catch (error) {
-        console.error('Error deleting task from database:', error);
         Alert.alert('Warning', 'Task deleted locally but failed to delete from database.');
       }
     }

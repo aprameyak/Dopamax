@@ -136,7 +136,6 @@ function generateIcon(size, filename) {
     // Save the image
     const buffer = canvas.toBuffer('image/png');
     fs.writeFileSync(path.join('assets', filename), buffer);
-    console.log(`Generated ${filename} (${size}x${size})`);
 }
 
 // Create assets directory if it doesn't exist
@@ -149,5 +148,3 @@ generateIcon(1024, 'icon.png');
 generateIcon(512, 'adaptive-icon.png');
 generateIcon(192, 'splash-icon.png');
 generateIcon(32, 'favicon.png');
-
-console.log('All icons generated successfully!'); 
