@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Notifications from 'expo-notifications';
 import { databaseService, Task as DatabaseTask, TaskWithId } from './database';
 
 interface Task {
@@ -21,10 +22,15 @@ interface Task {
 export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -43,6 +49,8 @@ export default function App() {
           }));
         
         setTasks(tasks);
+        
+        await setupNotifications();
       } catch (error) {
         Alert.alert('Error', 'Failed to initialize app.');
       } finally {
@@ -52,6 +60,64 @@ export default function App() {
 
     init();
   }, []);
+
+  const setupNotifications = async () => {
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        setNotificationsEnabled(false);
+        return;
+      }
+
+      await Notifications.cancelAllScheduledNotificationsAsync();
+
+      const now = new Date();
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const morningTime = new Date(now);
+      morningTime.setHours(9, 0, 0, 0);
+      if (morningTime <= now) {
+        morningTime.setDate(morningTime.getDate() + 1);
+      }
+
+      const sundayTime = new Date(now);
+      const daysUntilSunday = (7 - now.getDay()) % 7;
+      sundayTime.setDate(now.getDate() + daysUntilSunday);
+      sundayTime.setHours(18, 0, 0, 0);
+      if (sundayTime <= now) {
+        sundayTime.setDate(sundayTime.getDate() + 7);
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Dopamax',
+          body: 'Good morning! Ready to be productive today?',
+        },
+        trigger: {
+          hour: 9,
+          minute: 0,
+          repeats: true,
+          timeZone: timezone,
+        },
+      });
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Dopamax',
+          body: 'Weekly summary: You completed tasks this week',
+        },
+        trigger: {
+          weekday: 1,
+          hour: 18,
+          minute: 0,
+          repeats: true,
+          timeZone: timezone,
+        },
+      });
+    } catch (error) {
+      setNotificationsEnabled(false);
+    }
+  };
 
   const addTask = async () => {
     if (newTaskTitle.trim() === '') {
@@ -124,18 +190,79 @@ export default function App() {
     }
   };
 
-  const deleteTask = async (taskId: string) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
+  const confirmDelete = (taskId: string) => {
+    setTaskToDelete(taskId);
+    setShowDeleteModal(true);
+  };
+
+  const deleteTask = async () => {
+    if (!taskToDelete) return;
+    
+    setTasks(tasks.filter(task => task.id !== taskToDelete));
 
     if (isDatabaseReady) {
       try {
-        const dbId = parseInt(taskId);
+        const dbId = parseInt(taskToDelete);
         if (!isNaN(dbId)) {
           await databaseService.deleteTask(dbId);
         }
       } catch (error) {
         Alert.alert('Warning', 'Task deleted locally but failed to delete from database.');
       }
+    }
+    
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
+  };
+
+  const startEdit = (task: Task) => {
+    setEditingTask(task);
+    setEditTaskTitle(task.title);
+  };
+
+  const saveEdit = async () => {
+    if (!editingTask || editTaskTitle.trim() === '') return;
+
+    const updatedTasks = tasks.map(task =>
+      task.id === editingTask.id ? { ...task, title: editTaskTitle.trim() } : task
+    );
+    
+    setTasks(updatedTasks);
+
+    if (isDatabaseReady) {
+      try {
+        const dbId = parseInt(editingTask.id);
+        if (!isNaN(dbId)) {
+          await databaseService.updateTask(dbId, {
+            title: editTaskTitle.trim(),
+          });
+        }
+      } catch (error) {
+        Alert.alert('Warning', 'Task updated locally but failed to update in database.');
+      }
+    }
+    
+    setEditingTask(null);
+    setEditTaskTitle('');
+  };
+
+  const cancelEdit = () => {
+    setEditingTask(null);
+    setEditTaskTitle('');
+  };
+
+  const toggleNotifications = async () => {
+    if (notificationsEnabled) {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      setNotificationsEnabled(false);
+    } else {
+      await setupNotifications();
+      setNotificationsEnabled(true);
     }
   };
 
@@ -170,8 +297,20 @@ export default function App() {
       <StatusBar style="light" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Dopamax</Text>
-        <Text style={styles.subtitle}>Turn tasks into dopamine hits</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.title}>Dopamax</Text>
+            <Text style={styles.subtitle}>Turn tasks into dopamine hits</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.notificationToggle} 
+            onPress={toggleNotifications}
+          >
+            <Text style={styles.notificationToggleText}>
+              {notificationsEnabled ? '🔔' : '🔕'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.progressSection}>
@@ -249,38 +388,88 @@ export default function App() {
         ) : (
           visibleTasks.map((task) => (
             <View key={task.id} style={styles.taskItem}>
-              <TouchableOpacity
-                style={styles.taskContent}
-                onPress={() => toggleTask(task.id)}
-              >
-                <View style={styles.taskCheckbox}>
-                  <Text style={styles.checkboxText}>
-                    {task.completed ? '✓' : '○'}
-                  </Text>
+              {editingTask?.id === task.id ? (
+                <View style={styles.editContainer}>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editTaskTitle}
+                    onChangeText={setEditTaskTitle}
+                    placeholder="Edit task..."
+                    placeholderTextColor="#999"
+                    autoFocus
+                  />
+                  <View style={styles.editButtons}>
+                    <TouchableOpacity style={styles.saveButton} onPress={saveEdit}>
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelButton} onPress={cancelEdit}>
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                
-                <View style={styles.taskInfo}>
-                  <Text
-                    style={[
-                      styles.taskTitle,
-                      task.completed && styles.completedTask,
-                    ]}
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.taskContent}
+                    onPress={() => toggleTask(task.id)}
                   >
-                    {task.title}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => deleteTask(task.id)}
-              >
-                <Text style={styles.deleteButtonText}>×</Text>
-              </TouchableOpacity>
+                    <View style={styles.taskCheckbox}>
+                      <Text style={styles.checkboxText}>
+                        {task.completed ? '✓' : '○'}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.taskInfo}>
+                      <Text
+                        style={[
+                          styles.taskTitle,
+                          task.completed && styles.completedTask,
+                        ]}
+                      >
+                        {task.title}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.taskActions}>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => startEdit(task)}
+                    >
+                      <Text style={styles.editButtonText}>✏️</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => confirmDelete(task.id)}
+                    >
+                      <Text style={styles.deleteButtonText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
             </View>
           ))
         )}
       </ScrollView>
+
+      {showDeleteModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Task?</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={cancelDelete}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalDeleteButton} onPress={deleteTask}>
+                <Text style={styles.modalDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -306,7 +495,17 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  notificationToggle: {
+    padding: 8,
+  },
+  notificationToggleText: {
+    fontSize: 20,
   },
   title: {
     fontSize: 28,
@@ -487,10 +686,125 @@ const styles = StyleSheet.create({
     color: '#999',
   },
 
+  taskActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editButton: {
+    padding: 12,
+  },
+  editButtonText: {
+    fontSize: 16,
+  },
   deleteButton: {
-    padding: 16,
+    padding: 12,
   },
   deleteButtonText: {
     fontSize: 18,
+    color: '#FF6B6B',
+  },
+  editContainer: {
+    padding: 16,
+    width: '100%',
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#FAFAFA',
+    marginBottom: 12,
+  },
+  editButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  saveButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    flex: 1,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    flex: 1,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    margin: 20,
+    maxWidth: 300,
+    width: '100%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalDeleteButton: {
+    backgroundColor: '#FF6B6B',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+    alignItems: 'center',
+  },
+  modalDeleteText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
