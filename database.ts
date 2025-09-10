@@ -19,7 +19,6 @@ class DatabaseService {
     try {
       this.db = await SQLite.openDatabaseAsync('dopamax.db');
       
-      // Create tasks table
       await this.db.execAsync(`
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +28,6 @@ class DatabaseService {
           createdAt TEXT NOT NULL
         );
       `);
-      
     } catch (error) {
     }
   }
@@ -71,33 +69,25 @@ class DatabaseService {
   async updateTask(id: number, updates: Partial<Task>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    try {
-      const setClause = Object.keys(updates)
-        .filter(key => key !== 'id')
-        .map(key => `${key} = ?`)
-        .join(', ');
-      
-      const values = Object.entries(updates)
-        .filter(([key]) => key !== 'id')
-        .map(([_, value]) => value);
-      
-      await this.db.runAsync(
-        `UPDATE tasks SET ${setClause} WHERE id = ?`,
-        [...values, id]
-      );
-    } catch (error) {
-      throw error;
-    }
+    const setClause = Object.keys(updates)
+      .filter(key => key !== 'id')
+      .map(key => `${key} = ?`)
+      .join(', ');
+    
+    const values = Object.entries(updates)
+      .filter(([key]) => key !== 'id')
+      .map(([_, value]) => value);
+    
+    await this.db.runAsync(
+      `UPDATE tasks SET ${setClause} WHERE id = ?`,
+      [...values, id]
+    );
   }
 
   async deleteTask(id: number): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    try {
-      await this.db.runAsync('DELETE FROM tasks WHERE id = ?', [id]);
-    } catch (error) {
-      throw error;
-    }
+    await this.db.runAsync('DELETE FROM tasks WHERE id = ?', [id]);
   }
 
   async getCompletedTasksCount(): Promise<number> {

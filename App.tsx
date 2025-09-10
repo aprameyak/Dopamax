@@ -26,33 +26,31 @@ export default function App() {
   const [isDatabaseReady, setIsDatabaseReady] = useState(false);
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
-  // Initialize database and load tasks
   useEffect(() => {
-    const initializeApp = async () => {
+    const init = async () => {
       try {
         await databaseService.initDatabase();
         setIsDatabaseReady(true);
         
-        // Load existing tasks from database
         const dbTasks = await databaseService.getTasks();
-        const convertedTasks: Task[] = dbTasks
-          .filter(dbTask => dbTask.id !== undefined) // Only include tasks with valid IDs
-          .map(dbTask => ({
-            id: dbTask.id!.toString(), // Safe to use ! since we filtered
-            title: dbTask.title,
-            dopamineScore: dbTask.score,
-            completed: dbTask.completed,
+        const tasks = dbTasks
+          .filter(task => task.id !== undefined)
+          .map(task => ({
+            id: task.id!.toString(),
+            title: task.title,
+            dopamineScore: task.score,
+            completed: task.completed,
           }));
         
-        setTasks(convertedTasks);
+        setTasks(tasks);
       } catch (error) {
-        Alert.alert('Error', 'Failed to initialize app. Using local storage.');
+        Alert.alert('Error', 'Failed to initialize app.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    initializeApp();
+    init();
   }, []);
 
   const addTask = async () => {
@@ -61,18 +59,16 @@ export default function App() {
       return;
     }
 
-    // Save to database if ready
     if (isDatabaseReady) {
       try {
         const dbTask: Omit<DatabaseTask, 'id'> = {
           title: newTaskTitle.trim(),
-          score: 1, // All tasks count as 1
+          score: 1,
           completed: false,
           createdAt: new Date().toISOString(),
         };
         const savedTask = await databaseService.addTask(dbTask);
         
-        // Add to local state with the correct database ID
         const newTask: Task = {
           id: savedTask.id.toString(),
           title: savedTask.title,
@@ -83,27 +79,25 @@ export default function App() {
       } catch (error) {
         Alert.alert('Warning', 'Task saved locally but failed to save to database.');
         
-                 // Fallback: add to local state with temporary ID
-         const newTask: Task = {
-           id: Date.now().toString(),
-           title: newTaskTitle.trim(),
-           dopamineScore: 1,
-           completed: false,
-         };
+        const newTask: Task = {
+          id: Date.now().toString(),
+          title: newTaskTitle.trim(),
+          dopamineScore: 1,
+          completed: false,
+        };
         setTasks([...tasks, newTask]);
       }
     } else {
-             // Database not ready, add to local state with temporary ID
-       const newTask: Task = {
-         id: Date.now().toString(),
-         title: newTaskTitle.trim(),
-                    dopamineScore: 1,
-         completed: false,
-       };
-       setTasks([...tasks, newTask]);
-     }
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title: newTaskTitle.trim(),
+        dopamineScore: 1,
+        completed: false,
+      };
+      setTasks([...tasks, newTask]);
+    }
      
-     setNewTaskTitle('');
+    setNewTaskTitle('');
   };
 
   const toggleTask = async (taskId: string) => {
@@ -111,10 +105,8 @@ export default function App() {
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
     
-    // Update local state immediately for responsive UI
     setTasks(updatedTasks);
 
-    // Update database if ready
     if (isDatabaseReady) {
       try {
         const task = updatedTasks.find(t => t.id === taskId);
@@ -133,10 +125,8 @@ export default function App() {
   };
 
   const deleteTask = async (taskId: string) => {
-    // Remove from local state immediately for responsive UI
     setTasks(tasks.filter(task => task.id !== taskId));
 
-    // Delete from database if ready
     if (isDatabaseReady) {
       try {
         const dbId = parseInt(taskId);
@@ -154,7 +144,6 @@ export default function App() {
   const progress = totalTasks > 0 ? completedTasks / totalTasks : 0;
   const totalDopamine = tasks.filter(task => task.completed).length;
 
-  // Filter tasks based on completion status
   const visibleTasks = showCompletedTasks 
     ? tasks 
     : tasks.filter(task => !task.completed);
@@ -180,13 +169,11 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
       
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Dopamax</Text>
         <Text style={styles.subtitle}>Turn tasks into dopamine hits</Text>
       </View>
 
-      {/* Progress Section */}
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
           <Text style={styles.progressTitle}>Today's Progress</Text>
@@ -213,26 +200,24 @@ export default function App() {
         </View>
       </View>
 
-      {/* Add Task Section */}
       <View style={styles.addTaskSection}>
         <Text style={styles.sectionTitle}>Add New Task</Text>
         
-                  <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.taskInput}
-              placeholder="What do you want to accomplish?"
-              value={newTaskTitle}
-              onChangeText={setNewTaskTitle}
-              placeholderTextColor="#999"
-            />
-          
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.taskInput}
+            placeholder="What do you want to accomplish?"
+            value={newTaskTitle}
+            onChangeText={setNewTaskTitle}
+            placeholderTextColor="#999"
+          />
+        
           <TouchableOpacity style={styles.addButton} onPress={addTask}>
             <Text style={styles.addButtonText}>Add Task</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Tasks List */}
       <ScrollView style={styles.tasksContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.tasksHeader}>
           <Text style={styles.sectionTitle}>Your Tasks</Text>
