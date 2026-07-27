@@ -77,6 +77,7 @@ export default function App() {
           body: 'Good morning! Ready to be productive today?',
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
           hour: 9,
           minute: 0,
           repeats: true,
@@ -89,6 +90,7 @@ export default function App() {
           body: 'Weekly summary: You completed tasks this week',
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
           weekday: 1,
           hour: 18,
           minute: 0,
