@@ -71,23 +71,6 @@ export default function App() {
 
       await Notifications.cancelAllScheduledNotificationsAsync();
 
-      const now = new Date();
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      const morningTime = new Date(now);
-      morningTime.setHours(9, 0, 0, 0);
-      if (morningTime <= now) {
-        morningTime.setDate(morningTime.getDate() + 1);
-      }
-
-      const sundayTime = new Date(now);
-      const daysUntilSunday = (7 - now.getDay()) % 7;
-      sundayTime.setDate(now.getDate() + daysUntilSunday);
-      sundayTime.setHours(18, 0, 0, 0);
-      if (sundayTime <= now) {
-        sundayTime.setDate(sundayTime.getDate() + 7);
-      }
-
       await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Dopamax',
@@ -97,7 +80,6 @@ export default function App() {
           hour: 9,
           minute: 0,
           repeats: true,
-          timeZone: timezone,
         },
       });
 
@@ -111,7 +93,6 @@ export default function App() {
           hour: 18,
           minute: 0,
           repeats: true,
-          timeZone: timezone,
         },
       });
     } catch (error) {
