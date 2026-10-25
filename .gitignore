@@ -25,3 +25,4 @@ yarn-error.*
 .env*.local
 
 *.tsbuildinfo
+*.ipa
