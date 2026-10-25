@@ -74,42 +74,34 @@
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
             
-            // Clear canvas
             ctx.clearRect(0, 0, size, size);
             
-            // Create gradient background
             const gradient = ctx.createLinearGradient(0, 0, size, size);
             gradient.addColorStop(0, '#8B5CF6');
             gradient.addColorStop(1, '#A855F7');
             
-            // Draw background
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, size, size);
             
-            // Add rounded corners
             ctx.globalCompositeOperation = 'destination-in';
             ctx.beginPath();
             ctx.roundRect(0, 0, size, size, size * 0.2);
             ctx.fill();
             ctx.globalCompositeOperation = 'source-over';
             
-            // Draw dopamine molecule symbol
             const centerX = size / 2;
             const centerY = size / 2;
             const moleculeSize = size * 0.4;
             
-            // Draw central circle (carbon atom)
             ctx.fillStyle = 'white';
             ctx.beginPath();
             ctx.arc(centerX, centerY, moleculeSize * 0.15, 0, 2 * Math.PI);
             ctx.fill();
             
-            // Draw connecting lines (bonds)
             ctx.strokeStyle = 'white';
             ctx.lineWidth = size * 0.02;
             ctx.lineCap = 'round';
             
-            // Draw bonds
             const bondLength = moleculeSize * 0.3;
             const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
             
@@ -124,14 +116,12 @@
                 ctx.lineTo(x2, y2);
                 ctx.stroke();
                 
-                // Draw small circles at bond ends (hydrogen atoms)
                 ctx.fillStyle = 'white';
                 ctx.beginPath();
                 ctx.arc(x2, y2, moleculeSize * 0.08, 0, 2 * Math.PI);
                 ctx.fill();
             });
             
-            // Add "D" letter overlay for Dopamax
             ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.font = `bold ${size * 0.25}px Arial`;
             ctx.textAlign = 'center';
@@ -147,7 +137,6 @@
             link.click();
         }
         
-        // Generate all icons
         drawIcon('icon1024', 1024);
         drawIcon('icon512', 512);
         drawIcon('icon192', 192);
