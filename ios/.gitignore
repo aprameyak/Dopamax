@@ -1,5 +1,9 @@
+# OSX
+#
 .DS_Store
 
+# Xcode
+#
 build/
 *.pbxuser
 !default.pbxuser
@@ -19,6 +23,8 @@ DerivedData
 project.xcworkspace
 .xcode.env.local
 
+# Bundle artifacts
 *.jsbundle
 
+# CocoaPods
 /Pods/
