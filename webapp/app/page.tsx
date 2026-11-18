@@ -11,7 +11,7 @@ export default function Home() {
       justifyContent: 'center',
       padding: '2rem',
       fontFamily: 'Inter, sans-serif',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      background: '#4b5d52',
       color: 'white'
     }}>
       <div style={{

@@ -10,7 +10,7 @@
 
 ## Features
 
-- Landing page introducing Dopamax with gradient branding and navigation
+- Landing page introducing Dopamax with navigation
 - Support page with contact information and help resources
 - Privacy policy page for App Store compliance
 - Vercel Analytics integration for traffic monitoring
