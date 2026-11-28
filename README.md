@@ -2,7 +2,7 @@
 
 A minimal to-do app for iOS and Android. You add tasks, check them off, and watch a progress bar and completed-task counter fill up, with optional daily and weekly reminder notifications. Tasks are stored on the device in SQLite; there is no account or server.
 
-The repo also contains the app's companion website in `webapp/` (landing, support, and privacy pages), deployed at https://dopamax-admin.vercel.app.
+The repo also contains the app's companion website in `webapp/` (landing, support, and privacy pages), deployed at https://dopamaxadmin.aprameyakannan.com.
 
 ## Features
 
